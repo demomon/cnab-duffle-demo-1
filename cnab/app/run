@@ -1,0 +1,53 @@
+#!/bin/bash
+
+set -eo pipefail
+
+export KUBECONFIG="/cnab/app/kube-config"
+action=$CNAB_ACTION
+name=$CNAB_INSTALLATION_NAME
+param=${CNAB_P_HELLO}
+
+echo "$param world"
+case $action in
+    install)
+        echo "[Install]"
+        kgi validate kubectl
+        sleep 10
+        echo "[Helm]"
+        kgi install helm
+        echo "[Sleep 10]"
+        sleep 10
+        echo "[Ingress Controller]"
+        kgi install nginx
+        echo "[Storage Class]"
+        kgi gke sc-ssd
+        echo "[Sleep 30]"
+        sleep 30
+        echo "[Lets Encrypt]"
+        kgi install letsencrypt -e jvandergriendt@cloudbees.com --production
+        echo "[CloudBees Core]"
+        kgi cbc install --verbose --domainName cloudbees-core.kearos.net --production
+        echo "[Sleep 10]"
+        sleep 30
+        echo "[Retrieve IP]"
+        kgi gke ing-ip -s ingress-nginx -n ingress-nginx
+    ;;
+    uninstall)
+        echo "uninstall action"
+    ;;
+    upgrade)
+        echo "[Upgrade]"
+        kgi cbc install --verbose --domainName cloudbees-core.kearos.net --production
+    ;;
+    downgrade)
+        echo "Downgrade action"
+    ;;
+    status)
+        echo "[Status]"
+        kgi validate kubectl
+    ;;
+    *)
+        echo "No action for $action"
+    ;;
+esac
+echo "Action $action complete for $name"
